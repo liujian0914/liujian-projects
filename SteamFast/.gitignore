@@ -1,0 +1,41 @@
+# Build outputs
+*.exe
+*.dll
+*.pdb
+*.zip
+*.7z
+*.msi
+*.iso
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+*.csproj.user
+
+# Build tools
+Inno Setup 6/
+packages/
+bin/
+obj/
+
+# Logs
+logs/
+*.log
+
+# Backup files
+backup/
+*_backup*
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test results
+selftest_*.txt
+ui_preview.png
+
+# Compiled output
+SteamFast_Source.zip
