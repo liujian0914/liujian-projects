@@ -45,6 +45,8 @@ hosts 只能改 DNS 解析结果。它能修的只有一类问题：**DNS 给错
 
 ## 使用方法
 
+**开箱即用**：直接下载本目录下的 [`SteamFast.exe`](./SteamFast.exe)（约 85 KB，单文件，无需安装 .NET 之外的任何依赖），双击即可。
+
 1. 双击运行 `SteamFast.exe`（不弹 UAC）
 2. 勾选加速范围（Steam / GitHub 主站 / AI）
 3. 选加速模式：

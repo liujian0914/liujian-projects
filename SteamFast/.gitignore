@@ -7,6 +7,9 @@
 *.msi
 *.iso
 
+# 例外：随仓库直接分发的成品（用户要求开箱可用）
+!SteamFast.exe
+
 # IDE
 .vs/
 .vscode/
