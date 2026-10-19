@@ -16,9 +16,14 @@
 说明：[`SteamFast/README.md`](./SteamFast/README.md)
 源码：[`source/SteamFast.cs`](./source/SteamFast.cs)
 
+## 给接手的人
+
+要改代码、要发布、要判断某个域名能不能加速，先看 [`AGENTS.md`](./AGENTS.md)。
+里面写清了唯一真源在哪、标准动作是什么、哪些域名永远不在解决范围内。
+
 ## 目录说明
 
-- `source/` 放 SteamFast 的源码与编译脚本
+- `source/` 放 SteamFast 的源码与脚本（`compile.py` 编译、`publish.py` 发布）
 - `SteamFast/` 放项目说明、许可证与可直接运行的成品 exe
 
 ## 更新历史
@@ -28,6 +33,7 @@
 - SteamFast 升到 v3.0.0：三重校验（TCP → TLS 证书 → 真实 HTTPS 状态码）、现状基线对比、
   内置种子 IP、新增 `--preview`；修复 v2.0 把 `media.steampowered.com` 钉到坏 IP 的问题
 - 成品 exe 随仓库分发
+- 新增 `AGENTS.md` 与 `source/publish.py`，把"改代码 → 编译 → 发布"固化成两条命令
 
 ### 2026-10-10
 

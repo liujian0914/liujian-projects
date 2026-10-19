@@ -37,6 +37,7 @@ SYNC = [
     (os.path.join(ROOT, "SteamFast.exe"), os.path.join(REPO, "SteamFast", "SteamFast.exe")),
     (os.path.join(ROOT, "README.md"), os.path.join(REPO, "SteamFast", "README.md")),
     (os.path.join(ROOT, "AGENTS.md"), os.path.join(REPO, "AGENTS.md")),
+    (os.path.join(SRC, "README_仓库首页.md"), os.path.join(REPO, "README.md")),
     (os.path.join(ROOT, "LICENSE"), os.path.join(REPO, "LICENSE")),
     (os.path.join(ROOT, "LICENSE"), os.path.join(REPO, "SteamFast", "LICENSE")),
 ]

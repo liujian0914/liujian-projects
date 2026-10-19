@@ -15,7 +15,8 @@ D:\SteamFast\
 │   ├── app.manifest         清单（asInvoker，按参数自己提权）
 │   ├── SteamFast.ico        图标
 │   ├── 编译.py              编译：csc → 成品 exe + 自动自检
-│   └── 发布.py              发布：同步 → git commit → push → 校验远端
+│   ├── 发布.py              发布：同步 → git commit → push → 校验远端
+│   └── README_仓库首页.md   仓库首页 README 的真源（发布时写到 _repo\README.md）
 ├── backup\
 │   ├── hosts_original.bak   ★ 第一次运行前的原始 hosts，程序「还原 hosts」靠它
 │   └── hosts_before_apply.bak  每次加速前的快照
