@@ -1,5 +1,5 @@
 // ============================================================================
-//  蒸汽快线 SteamFast v2.0  ——  原生单文件版（.NET Framework 4.8 / C# 5）
+//  蒸汽快线 SteamFast v3.0  ——  原生单文件版（.NET Framework 4.8 / C# 5）
 //
 //  设计要点
 //  1) 一个 exe 两种角色：
@@ -7,8 +7,15 @@
 //       点「一键加速」→ 用 ShellExecute("runas") 再起一个自己，带 --job 参数，
 //                      只有这一刻弹一次 UAC；干活的进程不带界面，写完就退。
 //  2) 界面做 DPI 等比放大：本机 2560x1600 / 150% 缩放，不做的话会被位图拉伸、字发虚。
-//  3) 加速原理：多源 DNS 找候选 IP → TCP 握手测速 → TLS 握手 + 证书域名校验 →
-//     只把真正可用的最快 IP 写进 hosts 的标记区块（插在 Steam++ 条目之前）。
+//  3) 加速原理：多源 DNS（含系统 DNS 与内置种子 IP）找候选 → TCP 握手测速 →
+//     TLS 握手 + 证书域名校验 → 真实 HTTPS 请求校验状态码 →
+//     只把"真的能打开"的最快 IP 写进 hosts 的标记区块（插在 Steam++ 条目之前）。
+//
+//  3b) 能力边界（v3.0 起明确写死，不再假装全能）：
+//     hosts 只能修"DNS 给错/给慢 IP"这一类问题。
+//     如果某个域名在 IP 层或 TLS(SNI) 层被拦（表现为 TCP 超时 / TLS 被 RST），
+//     hosts 无论钉哪个 IP 都没用 —— 这类域名本程序会如实报"需完整反代"，
+//     不会硬写一条假条目充数。GitHub 的 raw / Release 下载即属此类。
 //
 //  编译（本机自带编译器，无需装任何东西）：
 //     csc.exe /target:winexe /win32icon:SteamFast.ico /win32manifest:app.manifest
@@ -24,6 +31,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -36,13 +44,13 @@ using System.Reflection;
 // ---------------------------------------------------------------- 程序集信息
 //  写进 PE 头，文件属性里就能看到版本号、说明、版权
 [assembly: AssemblyTitle("蒸汽快线 SteamFast")]
-[assembly: AssemblyDescription("Steam / GitHub / HuggingFace 网络加速工具（hosts 优选 IP + Steam++ 互补）")]
+[assembly: AssemblyDescription("Steam / GitHub 网络加速工具（hosts 优选 IP + 真实 HTTPS 校验）")]
 [assembly: AssemblyProduct("蒸汽快线 SteamFast")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyCopyright("")]
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
-[assembly: AssemblyInformationalVersion("2.0.0")]
+[assembly: AssemblyVersion("3.0.0.0")]
+[assembly: AssemblyFileVersion("3.0.0.0")]
+[assembly: AssemblyInformationalVersion("3.0.0")]
 
 namespace SteamFast
 {
@@ -52,7 +60,7 @@ namespace SteamFast
     static class AppInfo
     {
         public const string Title = "蒸汽快线 SteamFast";
-        public const string Version = "2.0.0";
+        public const string Version = "3.0.0";
         public const string StartMark = "# ===== SteamFast Start =====";
         public const string EndMark = "# ===== SteamFast End =====";
         public const string SppMark = "# Steam++ Start";
@@ -98,8 +106,52 @@ namespace SteamFast
     {
         public static readonly string[] Servers = new string[]
         {
-            "223.5.5.5", "119.29.29.29", "114.114.114.114", "180.76.76.76", "8.8.8.8", "1.1.1.1"
+            "223.5.5.5", "119.29.29.29", "114.114.114.114", "180.76.76.76", "8.8.8.8"
         };
+
+        /// <summary>本机网卡上配置的 DNS（校园网/运营商），走原始 UDP，不受 hosts 影响。</summary>
+        public static List<string> SystemServers()
+        {
+            List<string> list = new List<string>();
+            try
+            {
+                foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                    foreach (IPAddress a in ni.GetIPProperties().DnsAddresses)
+                    {
+                        if (a.AddressFamily != AddressFamily.InterNetwork) continue;
+                        string s = a.ToString();
+                        if (!list.Contains(s)) list.Add(s);
+                    }
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        /// <summary>用系统 DNS 解析（UDP 直查，不读 hosts，避免自己写进去的条目反过来污染候选）。</summary>
+        public static List<string> SystemResolve(string domain, int timeoutMs)
+        {
+            List<string> found = new List<string>();
+            object gate = new object();
+            List<Thread> threads = new List<Thread>();
+            foreach (string s in SystemServers())
+            {
+                string server = s;
+                Thread t = new Thread(delegate()
+                {
+                    List<string> ips = QueryOne(domain, server, timeoutMs);
+                    lock (gate) { foreach (string ip in ips) if (!found.Contains(ip)) found.Add(ip); }
+                });
+                t.IsBackground = true;
+                t.Start();
+                threads.Add(t);
+            }
+            foreach (Thread t in threads) t.Join(timeoutMs + 300);
+            return found;
+        }
 
         public static List<string> Resolve(string domain, int timeoutMs)
         {
@@ -211,6 +263,56 @@ namespace SteamFast
     }
 
     // ========================================================================
+    //  内置种子 IP（公共 DNS 被污染时的兜底候选）
+    //  说明：这些只是"待测候选"，不是"结论"。任何一个都必须通过
+    //        TCP + TLS 证书 + 真实 HTTPS 请求三重校验才会被写进 hosts。
+    // ========================================================================
+    static class Seeds
+    {
+        private static readonly Dictionary<string, string[]> Map =
+            new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "github.com", new string[] { "20.205.243.166", "20.27.177.113", "4.237.22.38", "140.82.112.3" } },
+            { "api.github.com", new string[] { "20.205.243.168", "20.205.243.166" } },
+            { "codeload.github.com", new string[] { "20.205.243.165" } },
+            { "gist.github.com", new string[] { "20.205.243.166", "140.82.112.3" } },
+            { "github.githubassets.com", new string[] { "185.199.108.154", "185.199.109.154", "185.199.110.154", "185.199.111.154", "185.199.110.215" } },
+            { "store.steampowered.com", new string[] { "184.31.230.122", "23.200.214.95" } },
+            { "api.steampowered.com", new string[] { "184.24.154.132", "23.210.216.138" } },
+            { "login.steampowered.com", new string[] { "23.55.143.33", "23.210.216.146" } },
+            { "checkout.steampowered.com", new string[] { "104.103.144.236", "23.54.32.239" } },
+            { "media.steampowered.com", new string[] { "23.222.27.136", "23.222.27.147", "23.55.179.196" } },
+            { "cdn.akamai.steamstatic.com", new string[] { "104.84.150.183", "23.222.27.147" } },
+            { "store.akamai.steamstatic.com", new string[] { "23.210.7.167", "23.222.27.147" } },
+            { "community.akamai.steamstatic.com", new string[] { "23.210.7.168", "23.222.27.147" } },
+            { "avatars.akamai.steamstatic.com", new string[] { "23.210.7.179", "23.222.27.147" } },
+            { "steamcdn-a.akamaihd.net", new string[] { "104.84.150.175", "23.210.216.88" } },
+            { "steamuserimages-a.akamaihd.net", new string[] { "23.210.7.177", "23.210.216.88" } },
+            { "steamcommunity-a.akamaihd.net", new string[] { "23.210.7.179", "23.222.27.147" } },
+            { "community.steamstatic.com", new string[] { "199.232.215.52", "23.222.27.147" } },
+            { "hf.co", new string[] { "3.210.66.237" } },
+            { "cdn-lfs.hf.co", new string[] { "13.226.69.74" } },
+            { "cdn-images.hf.co", new string[] { "13.35.190.40" } }
+        };
+
+        private static readonly string[] RawGithub = new string[]
+        {
+            "185.199.108.133", "185.199.109.133", "185.199.110.133", "185.199.111.133"
+        };
+
+        public static List<string> For(string domain)
+        {
+            List<string> r = new List<string>();
+            string[] hit;
+            if (Map.TryGetValue(domain, out hit))
+                r.AddRange(hit);
+            if (domain.EndsWith("githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                foreach (string ip in RawGithub) if (!r.Contains(ip)) r.Add(ip);
+            return r;
+        }
+    }
+
+    // ========================================================================
     //  连通性探测：TCP 握手测速 + TLS 证书验证
     // ========================================================================
     static class Probe
@@ -281,6 +383,78 @@ namespace SteamFast
             }
             catch { return false; }
             finally { if (sock != null) { try { sock.Close(); } catch { } } }
+        }
+
+        /// <summary>
+        /// 终极判据：TCP 通 + TLS 证书对得上 + 真实 HTTPS 请求能拿到状态行。
+        /// 只有这一关过了，才认为"这个 IP 对这个域名真的能用"。
+        /// 5xx 视为不可用；4xx 是"路径没内容但服务在"，算可用。
+        /// </summary>
+        public static bool HttpCheck(string host, string ip, int timeoutMs, out int ms, out int status, out int stage)
+        {
+            ms = -1; status = 0; stage = 0;
+            Socket sock = null;
+            SslStream ssl = null;
+            try
+            {
+                IPAddress addr;
+                if (!IPAddress.TryParse(ip, out addr)) { stage = 1; return false; }
+                sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IAsyncResult ar = sock.BeginConnect(new IPEndPoint(addr, 443), null, null);
+                if (!ar.AsyncWaitHandle.WaitOne(timeoutMs)) { stage = 1; return false; }
+                sock.EndConnect(ar);
+                sock.ReceiveTimeout = timeoutMs;
+                sock.SendTimeout = timeoutMs;
+
+                Stopwatch sw = Stopwatch.StartNew();
+                ssl = new SslStream(new NetworkStream(sock, true), false,
+                    delegate(object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) { return true; });
+
+                bool[] ok = new bool[1];
+                SslStream cap = ssl;
+                Thread th = new Thread(delegate()
+                {
+                    // 固定 TLS 1.2：.NET Framework 4.8 上 SslProtocols.None 会直接握手失败，
+                    // 而 GitHub / Steam 全线都支持 1.2，钉死最稳。
+                    try { cap.AuthenticateAsClient(host, null, SslProtocols.Tls12, false); ok[0] = true; }
+                    catch { ok[0] = false; }
+                });
+                th.IsBackground = true;
+                th.Start();
+                if (!th.Join(timeoutMs)) { stage = 2; return false; }
+                if (!ok[0]) { stage = 2; return false; }
+
+                X509Certificate rc = ssl.RemoteCertificate;
+                if (rc == null) { stage = 2; return false; }
+                if (!CertMatches(host, new X509Certificate2(rc))) { stage = 2; return false; }
+
+                byte[] req = Encoding.ASCII.GetBytes(
+                    "GET / HTTP/1.1\r\nHost: " + host + "\r\nUser-Agent: SteamFast/3.0\r\n" +
+                    "Accept: */*\r\nConnection: close\r\n\r\n");
+                ssl.Write(req);
+                ssl.Flush();
+
+                byte[] buf = new byte[512];
+                int n = ssl.Read(buf, 0, buf.Length);
+                if (n <= 0) { stage = 3; return false; }
+                string head = Encoding.ASCII.GetString(buf, 0, n);
+                if (!head.StartsWith("HTTP/")) { stage = 3; return false; }
+                int sp = head.IndexOf(' ');
+                if (sp < 0 || head.Length < sp + 4) { stage = 3; return false; }
+                int code;
+                if (!int.TryParse(head.Substring(sp + 1, 3), out code)) { stage = 3; return false; }
+                status = code;
+                if (code >= 500) { stage = 4; return false; }
+                sw.Stop();
+                ms = (int)sw.ElapsedMilliseconds;
+                return true;
+            }
+            catch { if (stage == 0) stage = 1; return false; }
+            finally
+            {
+                if (ssl != null) { try { ssl.Close(); } catch { } }
+                if (sock != null) { try { sock.Close(); } catch { } }
+            }
         }
 
         private static bool CertMatches(string host, X509Certificate2 cert)
@@ -489,6 +663,17 @@ namespace SteamFast
             catch { }
         }
 
+        public static List<string> BuildBlock(List<string> entries)
+        {
+            List<string> block = new List<string>();
+            block.Add(AppInfo.StartMark);
+            block.Add("# 由「" + AppInfo.Title + "」自动生成 · " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            block.Add("# 撤除方法：打开 SteamFast 点「停止加速」，或手动删除本区块全部行");
+            foreach (string e in entries) block.Add(e);
+            block.Add(AppInfo.EndMark);
+            return block;
+        }
+
         public static void Apply(List<string> entries)
         {
             EnsureBackup();
@@ -496,12 +681,7 @@ namespace SteamFast
             string text = ReadText(out enc);
             List<string> lines = Strip(new List<string>(Norm(text).Split('\n')));
 
-            List<string> block = new List<string>();
-            block.Add(AppInfo.StartMark);
-            block.Add("# 由「" + AppInfo.Title + "」自动生成 · " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            block.Add("# 撤除方法：打开 SteamFast 点「停止加速」，或手动删除本区块全部行");
-            foreach (string e in entries) block.Add(e);
-            block.Add(AppInfo.EndMark);
+            List<string> block = BuildBlock(entries);
 
             int insert = lines.Count;
             for (int i = 0; i < lines.Count; i++)
@@ -516,6 +696,28 @@ namespace SteamFast
             }
             lines.InsertRange(insert, block);
             WriteText(string.Join("\r\n", lines.ToArray()), enc);
+        }
+
+        /// <summary>只算不改：把"假如现在加速"之后 hosts 会长什么样，输出成文本供预览/验收。</summary>
+        public static string Preview(List<string> entries)
+        {
+            Encoding enc;
+            string text = ReadText(out enc);
+            List<string> lines = Strip(new List<string>(Norm(text).Split('\n')));
+            List<string> block = BuildBlock(entries);
+            int insert = lines.Count;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string s = lines[i].Trim();
+                if (s.Length > 0 && !s.StartsWith("#")) { insert = i; break; }
+            }
+            while (insert > 0)
+            {
+                string prev = lines[insert - 1].Trim();
+                if (prev.StartsWith("#")) insert--; else break;
+            }
+            lines.InsertRange(insert, block);
+            return string.Join("\r\n", lines.ToArray());
         }
 
         public static void RemoveBlock()
@@ -556,6 +758,13 @@ namespace SteamFast
         public int Ms;
         public string Note;
         public int Candidates;
+        public string SysIp;   // 系统 DNS 给的第一个 IP（用于日志对比）
+        public int Status;     // HTTPS 状态码
+        public int Tries;      // 实际试过几个候选
+        public string BaseIp;  // 现状基线：系统 DNS 的 IP 实测能不能用
+        public int BaseMs;
+        public int BaseStatus;
+        public int Gain;       // 改写后的收益百分比
     }
 
     static class Engine
@@ -608,49 +817,118 @@ namespace SteamFast
         private static DomainResult One(string domain)
         {
             DomainResult r = new DomainResult { Domain = domain };
-            List<string> ips = Dns.Resolve(domain, 900);
-            ips = ips.Where(delegate(string x)
+
+            // 1) 候选来源三条腿：系统 DNS → 内置种子 → 公共 DNS（去重保序）
+            List<string> sys = Dns.SystemResolve(domain, 1200);
+            if (sys.Count > 0) r.SysIp = sys[0];
+            List<string> cand = new List<string>();
+            foreach (string ip in sys) if (!cand.Contains(ip)) cand.Add(ip);
+            foreach (string ip in Seeds.For(domain)) if (!cand.Contains(ip)) cand.Add(ip);
+            foreach (string ip in Dns.Resolve(domain, 1200)) if (!cand.Contains(ip)) cand.Add(ip);
+
+            List<string> ips = cand.Where(delegate(string x)
             {
                 if (x == "127.0.0.1" || x == "0.0.0.0") return false;
                 if (x.StartsWith("10.") || x.StartsWith("192.168.") || x.StartsWith("172.16.")) return false;
                 return true;
-            }).Take(8).ToList();
+            }).Take(12).ToList();
             r.Candidates = ips.Count;
-            if (ips.Count == 0) { r.Note = "DNS 无结果，跳过"; return r; }
+            if (ips.Count == 0) { r.Note = "DNS 无结果（疑似被污染），跳过"; return r; }
 
+            // 2) 先量出"现状基线"：系统 DNS 给的 IP 现在到底能不能打开、有多快。
+            //    基线有两个用途：① 当参照，判断候选 IP 返回的状态码是否正常；
+            //                    ② 当尺子，判断这次改写到底值不值得做。
+            int baseMs = 0, baseCode = 0, baseStage = 0;
+            string baseIp = null;
+            foreach (string ip in sys)
+            {
+                if (Probe.HttpCheck(domain, ip, 3000, out baseMs, out baseCode, out baseStage))
+                { baseIp = ip; break; }
+            }
+            r.BaseIp = baseIp; r.BaseMs = baseMs; r.BaseStatus = baseCode;
+
+            // 3) TCP 测速排序（便宜、并发），只对最快的几个做深度校验
             int[] ms = new int[ips.Count];
             for (int i = 0; i < ms.Length; i++) ms[i] = -1;
             Thread[] ths = new Thread[ips.Count];
             for (int i = 0; i < ips.Count; i++)
             {
                 int idx = i;
-                ths[i] = new Thread(delegate() { ms[idx] = Probe.TcpMs(ips[idx], 443, 800); });
+                ths[i] = new Thread(delegate() { ms[idx] = Probe.TcpMs(ips[idx], 443, 1200); });
                 ths[i].IsBackground = true;
                 ths[i].Start();
             }
-            foreach (Thread t in ths) t.Join(1500);
+            foreach (Thread t in ths) t.Join(2000);
 
             List<int> order = new List<int>();
             for (int i = 0; i < ips.Count; i++) if (ms[i] >= 0) order.Add(i);
-            if (order.Count == 0) { r.Note = "候选 IP 全部不可达，跳过（该域名需用完整模式）"; return r; }
+            if (order.Count == 0)
+            {
+                r.Note = (baseIp != null) ? "现状可用，候选 IP 全部不可达，保持原样"
+                                          : "IP 层全部不可达（TCP 无响应），hosts 无解，需完整反代";
+                return r;
+            }
             order.Sort(delegate(int a, int b) { return ms[a].CompareTo(ms[b]); });
 
+            // 4) 深度校验：TCP → TLS 证书 → 真实 HTTPS 状态码，且状态码要与基线同类。
+            //    只认"能真打开"的 IP；状态码跟基线不同类的（例如基线 200、它返回 403）
+            //    说明是错的边缘节点，写进去会把页面搞坏，一律不认。
+            int bestMs = int.MaxValue, bestCode = 0;
+            string bestIp = null;
             int tried = 0;
+            bool stageTls = false, stageHttp = false, stage5xx = false, stageMismatch = false;
             foreach (int idx in order)
             {
-                if (tried >= 3) break;
+                if (tried >= 4) break;
                 tried++;
-                int tlsMs;
-                if (Probe.TlsCheck(domain, ips[idx], 1500, out tlsMs))
+                int total, code, stage;
+                if (!Probe.HttpCheck(domain, ips[idx], 3000, out total, out code, out stage))
                 {
-                    r.Ip = ips[idx];
-                    r.Ms = tlsMs;
-                    r.Note = "直连可用";
+                    if (stage == 2) stageTls = true;
+                    else if (stage == 3) stageHttp = true;
+                    else if (stage == 4) stage5xx = true;
+                    continue;
+                }
+                if (baseIp != null && !SameClass(baseCode, code)) { stageMismatch = true; continue; }
+                if (baseIp == null && code >= 400) { stageMismatch = true; continue; }
+                if (total < bestMs) { bestMs = total; bestIp = ips[idx]; bestCode = code; }
+            }
+            r.Tries = tried;
+
+            if (bestIp == null)
+            {
+                if (baseIp != null) r.Note = "现状可用，候选都不如它，保持原样";
+                else if (stageTls) r.Note = "TLS 被重置/超时（SNI 层封锁），hosts 无解，需完整反代";
+                else if (stageHttp) r.Note = "能握手但请求无响应，跳过";
+                else if (stage5xx) r.Note = "源站返回 5xx，跳过";
+                else if (stageMismatch) r.Note = "候选返回异常状态码，跳过";
+                else r.Note = "候选全部不可用，跳过";
+                return r;
+            }
+
+            // 5) 收益判据：只有明显更快才改写。写了却不快，等于白折腾还添风险。
+            if (baseIp != null)
+            {
+                if (baseIp == bestIp) { r.Note = "系统 DNS 已是最优，无需改写"; return r; }
+                r.Gain = (int)Math.Round((1.0 - (double)bestMs / baseMs) * 100);
+                if (baseMs - bestMs < 80)
+                {
+                    r.Note = "改写收益太小（原 " + baseMs + "ms / 优 " + bestMs + "ms），保持原样";
                     return r;
                 }
             }
-            r.Note = "握手/证书校验未通过，跳过（该域名需用完整模式）";
+
+            r.Ip = bestIp;
+            r.Ms = bestMs;
+            r.Status = bestCode;
+            r.Note = (baseIp == null) ? "基线打不开，候选可用" : "比现状快 " + r.Gain + "%";
             return r;
+        }
+
+        private static bool SameClass(int a, int b)
+        {
+            if (a >= 500 || b >= 500) return false;
+            return (a < 400) == (b < 400);
         }
     }
 
@@ -739,6 +1017,7 @@ namespace SteamFast
             bool stop = Flag(args, "--stop");
             bool restore = Flag(args, "--restore");
             bool diag = Flag(args, "--diagnose");
+            bool preview = Flag(args, "--preview");
             bool installAuto = Flag(args, "--install-auto");
             bool removeAuto = Flag(args, "--remove-auto");
             bool auto = Flag(args, "--auto");
@@ -815,20 +1094,56 @@ namespace SteamFast
                     {
                         Prog("  进度 " + d + "/" + t + " — " + dom);
                     });
-                    int ok = 0, skip = 0;
+                    int ok = 0, skip = 0, nohosts = 0, keep = 0;
                     foreach (DomainResult r in res.OrderBy(delegate(DomainResult x) { return x.Domain; }))
                     {
-                        if (r.Ip != null)
+                        if (r.Ip != null) ok++;
+                        else
                         {
-                            ok++;
-                            Prog("  √ " + Pad(r.Domain, 38) + " → " + Pad(r.Ip, 16) + r.Ms + "ms  (候选 " + r.Candidates + " 个)");
+                            skip++;
+                            if (r.Note != null && r.Note.IndexOf("hosts 无解") >= 0) nohosts++;
+                            if (r.Note != null && r.Note.IndexOf("保持原样") >= 0) keep++;
                         }
-                        else { skip++; Prog("  × " + Pad(r.Domain, 38) + "  " + r.Note); }
+                        Prog((r.Ip != null ? "  √ " : "  × ") + Pad(r.Domain, 38) + " " + Desc(r));
                     }
-                    Prog("测速完成：可用 " + ok + " / 跳过 " + skip);
-                    Result("ok", "测速完成：可用 " + ok + " 个，跳过 " + skip + " 个", ok, true);
+                    Prog("测速完成：值得改写 " + ok + " 个 / 不改 " + skip + " 个（其中 hosts 无解 " + nohosts +
+                         " 个、现状已够快 " + keep + " 个）");
+                    Result("ok", "测速完成：值得改写 " + ok + " 个，不改 " + skip + " 个（hosts 无解 " + nohosts + " 个）", ok, true);
                 }
                 catch (Exception ex) { Prog("测速失败：" + ex.Message); Result("error", ex.Message, 0, false); }
+                return;
+            }
+
+            // ---------------- 只预览：算出"该写什么"，输出到 logs\hosts_preview.txt，不动 hosts
+            if (preview)
+            {
+                Prog("开始生成 hosts 预览（不动真实 hosts）");
+                try
+                {
+                    List<string> doms = Domains.Pick(job["groups"]);
+                    if (doms.Count == 0) throw new Exception("没有选中任何域名分组");
+                    List<DomainResult> res = Engine.Run(doms, null);
+                    List<string> entries = new List<string>();
+                    foreach (DomainResult r in res.OrderBy(delegate(DomainResult x) { return x.Domain; }))
+                        if (r.Ip != null) entries.Add(Pad(r.Ip, 16) + r.Domain);
+
+                    string txt = HostsFile.Preview(entries);
+                    string outFile = Path.Combine(AppInfo.LogDir, "hosts_preview.txt");
+                    File.WriteAllText(outFile, txt, new UTF8Encoding(false));
+
+                    int inside = 0; bool inB = false;
+                    foreach (string l in txt.Split('\n'))
+                    {
+                        string t = l.Trim();
+                        if (t == AppInfo.StartMark) { inB = true; continue; }
+                        if (t == AppInfo.EndMark) { inB = false; continue; }
+                        if (inB && t.Length > 0 && !t.StartsWith("#")) inside++;
+                    }
+                    Prog("预览已生成：" + outFile);
+                    Prog("区块内有效条目 " + inside + " 条（去重后应等于 " + entries.Count + "）");
+                    Result("ok", "预览已生成，区块 " + inside + " 条", inside, true);
+                }
+                catch (Exception ex) { Prog("预览失败：" + ex.Message); Result("error", ex.Message, 0, false); }
                 return;
             }
 
@@ -878,15 +1193,21 @@ namespace SteamFast
                     });
 
                     List<string> entries = new List<string>();
+                    int nohosts = 0;
                     foreach (DomainResult r in res.OrderBy(delegate(DomainResult x) { return x.Domain; }))
                     {
                         if (r.Ip != null) entries.Add(Pad(r.Ip, 16) + r.Domain);
+                        else if (r.Note != null && r.Note.IndexOf("hosts 无解") >= 0) nohosts++;
                     }
-                    Prog("优选成功 " + entries.Count + " / " + doms.Count + " 个域名");
+                    Prog("值得改写 " + entries.Count + " / " + doms.Count + " 个域名");
                     foreach (DomainResult r in res.OrderBy(delegate(DomainResult x) { return x.Domain; }))
                     {
-                        if (r.Ip != null) Prog("  √ " + Pad(r.Domain, 38) + " → " + r.Ip + "  " + r.Ms + "ms");
-                        else Prog("  × " + Pad(r.Domain, 38) + "  " + r.Note);
+                        Prog((r.Ip != null ? "  √ " : "  × ") + Pad(r.Domain, 38) + " " + Desc(r));
+                    }
+                    if (nohosts > 0)
+                    {
+                        Prog("提示：" + nohosts + " 个域名属 TLS(SNI) 层封锁，hosts 方案对它们无效，");
+                        Prog("      GitHub 的 raw 内容与 Release 下载需要「完整反代」模式（Watt Toolkit / 代理）。");
                     }
 
                     if (entries.Count == 0)
@@ -937,6 +1258,21 @@ namespace SteamFast
                 Prog("!! 出错：" + ex.Message);
                 Result("error", ex.Message, 0, false);
             }
+        }
+
+        private static string Desc(DomainResult r)
+        {
+            if (r.Ip == null)
+            {
+                string s = r.Note;
+                if (r.BaseIp != null) s += "（现状 " + r.BaseIp + "  " + r.BaseMs + "ms）";
+                else if (r.SysIp != null) s += "（系统 DNS: " + r.SysIp + "）";
+                return s;
+            }
+            string t = "→ " + Pad(r.Ip, 16) + Pad(r.Ms + "ms", 8) + "HTTP " + r.Status;
+            if (r.BaseIp != null) t += "   原 " + Pad(r.BaseIp, 16) + r.BaseMs + "ms → 快 " + r.Gain + "%";
+            else t += "   （基线打不开，改用此 IP）";
+            return t;
         }
 
         public static string Pad(string s, int n)
@@ -1145,7 +1481,7 @@ namespace SteamFast
             header.Controls.Add(t1);
 
             Label t2 = new Label();
-            t2.Text = "SteamFast  ·  零证书  ·  零常驻  ·  一键加速  ·  关掉窗口也继续生效";
+            t2.Text = "SteamFast  ·  零证书  ·  零常驻  ·  只钉真能打开的 IP  ·  关掉窗口也继续生效";
             t2.Font = new Font("Microsoft YaHei UI", 10F);
             t2.ForeColor = C_Accent;
             t2.AutoSize = true;
@@ -1212,7 +1548,7 @@ namespace SteamFast
 
             AddSection("加速范围", 334);
             _ckSteam = AddCheck("Steam 商店 / 社区 / CDN", 26, 358, true);
-            _ckGit = AddCheck("GitHub / 代码托管", 286, 358, true);
+            _ckGit = AddCheck("GitHub 主站 / API", 286, 358, true);
             _ckAi = AddCheck("Hugging Face / AI 资源", 500, 358, true);
 
             AddSection("运行日志", 394);
@@ -1636,6 +1972,7 @@ namespace SteamFast
             bool hasWork = args.Any(delegate(string a)
             {
                 return a == "--job" || a == "--stop" || a == "--restore" || a == "--diagnose" ||
+                       a == "--preview" ||
                        a == "--install-auto" || a == "--remove-auto" || a == "--auto";
             });
             if (hasWork) { Worker.Run(args); return; }
