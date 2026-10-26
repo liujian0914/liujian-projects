@@ -5,6 +5,17 @@
 | 项目 | 说明 | 版本 | 最近更新 |
 |---|---|---|---|
 | [SteamFast](./SteamFast) · 蒸汽快线 | Windows 上的 Steam / GitHub 网络加速小工具（hosts 优选 IP + 真实 HTTPS 校验） | 3.0.0 | 2026-10-19 |
+| [proposal-forge](./proposal-forge) · 申报书工坊 | 中文项目申报书全流程 AI 技能包：Word 结构手术、七种科研图、配色家族、排版修复、文献规范、去 AI 味检测 | 1.0.0 | 2026-10-26 |
+
+## proposal-forge 速览
+
+- **给 AI 用的技能包**：`SKILL.md` 主控 + 9 份参考手册 + 三套章节骨架，放进 skills 目录即被自动路由
+- **可单独当命令行工具**：`pf.py` 17 个子命令，全部支持 `--json`，能被 agent 直接消费
+- 解决四类真问题：结构不认模板、图不对版、排版崩（图号/目录/表格跨页）、语言飘（满篇"赋能闭环"）
+- 七种图型都带配色家族与白色描边；透明 PNG 自动压白底；改图上的字不改字号
+- 自带 `pf_selftest.py`，下载后一条命令验证 17 项能力
+
+说明：[`proposal-forge/README.md`](./proposal-forge/README.md) ／ 技能主控：[`SKILL.md`](./proposal-forge/SKILL.md)
 
 ## SteamFast 速览
 
@@ -25,8 +36,20 @@
 
 - `source/` 放 SteamFast 的源码与脚本（`compile.py` 编译、`publish.py` 发布）
 - `SteamFast/` 放项目说明、许可证与可直接运行的成品 exe
+- `proposal-forge/` 独立的 AI 技能包（`SKILL.md` + `scripts/` + `references/` + `templates/`），自带 MIT 许可证
 
 ## 更新历史
+
+### 2026-10-26
+
+- 新增 **proposal-forge 1.0.0**：中文项目申报书全流程工坊
+  - 六阶段 SOP（定基 → 搭骨 → 填肉 → 配图 → 修面 → 交付），每阶段带门禁
+  - `pf.py` 17 个子命令：格式嗅探、旧 doc 转换、穿透表格遍历、题注重排、
+    目录页码两遍法、表格防裁、图片盘点与替换、七种图表、配色迁移、
+    改图上的字、交付自检、去 AI 味检测
+  - 9 份参考手册 + 3 套章节骨架（大创 / 国创赛 / 挑战杯）+ 生图与改写提示词
+  - 50 条实测踩坑记录，含三个静默出错的坑（id 去重漏数据、WPS 不遵守 keepNext、set_text 整段变粗）
+  - 自带 `pf_selftest.py`，17 项断言一键验证
 
 ### 2026-10-19
 
@@ -42,3 +65,4 @@
 ## 许可
 
 各项目目录内单独标注，默认 GPLv3。
+`proposal-forge/` 例外，采用 **MIT**（见 [`proposal-forge/LICENSE`](./proposal-forge/LICENSE)），便于被其他项目和工具自由集成。
