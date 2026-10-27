@@ -9,9 +9,9 @@ description: >-
   核实文献真实性、去掉 AI 味、给申报书画架构图/甘特图/饼图/热力图/哑铃图、
   生成 IP 形象与海报、统一插图配色、封面排版、交付前自检、导出 PDF。
   触发词：申报书、申请书、计划书、大创、国创赛、挑战杯、调研报告、立项书、
-  项目申报、Word 排版、图表编号、目录页码、参考文献、去AI味、封面、插图、配色。
+  项目申报、项目命名、Word 排版、图表编号、目录页码、参考文献、去AI味、封面、插图、配色。
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   license: MIT
   platform: Windows 优先（COM 功能），其余功能跨平台
 ---
@@ -78,6 +78,12 @@ pf probe 自己的稿.docx --out out/自稿结构.md
 
 - 模板的表格是**固定结构**（基本情况、经费预算、意见栏），不要新增行，也不要合并单元格。
 - 正文若整体装在一个 1×1 表格里（大创申请书就是这样），编辑时**必须穿透表格**——本技能的 `pf` 全部命令都已穿透，自己写脚本时注意别用 `doc.paragraphs`。
+
+体例（经实战验证，见 `references/10-case-dachuang-giep.md` 第 5 节）：
+
+- **章节标题本身不编号**（项目简介／研究目的／…），编号从内容第一层开始：`（一）` → `1.` → `（1）`，最多到第三级。
+- 字体分层：一级宋体小四加粗、二级仿宋_GB2312 小四加粗、三级宋体小四加粗。
+- 项目命名按"品牌名·对象——地域+动作+手段"，副标题必须一行放得下（12 磅约 30–34 字）。
 
 门禁：标题数量、层级、顺序与模板一致；表格数量一致。
 
@@ -206,7 +212,8 @@ pf style <md|docx>                    # 去 AI 味检测
 | `references/06-citations.md` | 参考文献规范化与真实性核验 |
 | `references/07-humanize.md` | 去 AI 味：规则、改写手法、不同文体的尺度 |
 | `references/08-toolchain.md` | 科研工具链：每个工具干什么、怎么装、替代方案 |
-| `references/09-pitfalls.md` | 踩坑速查，动手前扫一眼能省半天 |
+| `references/09-pitfalls.md` | 踩坑速查（62 条），动手前扫一眼能省半天 |
+| `references/10-case-dachuang-giep.md` | **实战复盘**：命名方法、评审偏好、体例（一）/1./（1）、图表规范、文献核验、8 个脚本坑 |
 | `templates/outline-dachuang.md` | 大创申请书骨架 |
 | `templates/outline-guochuang.md` | 国创赛申报书骨架 |
 | `templates/outline-tiaozhanbei.md` | 挑战杯调研报告骨架 |
