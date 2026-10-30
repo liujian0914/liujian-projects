@@ -5,17 +5,24 @@
 | 项目 | 说明 | 版本 | 最近更新 |
 |---|---|---|---|
 | [SteamFast](./SteamFast) · 蒸汽快线 | Windows 上的 Steam / GitHub 网络加速小工具（hosts 优选 IP + 真实 HTTPS 校验） | 3.0.0 | 2026-10-19 |
-| [proposal-forge](./proposal-forge) · 申报书工坊 | 中文项目申报书全流程 AI 技能包：Word 结构手术、七种科研图、配色家族、排版修复、文献规范、去 AI 味检测 | 1.0.0 | 2026-10-26 |
+| [competition-forge](./competition-forge) · 竞赛工坊 | 中文竞赛全流程 AI 技能包：多赛道（大创/大挑）、Word 结构手术、答辩 PPT 编排、AI 生图、顶刊科研绘图、去 AI 味检测 | 2.0.0 | 2026-10-30 |
 
-## proposal-forge 速览
+## competition-forge 速览
 
-- **给 AI 用的技能包**：`SKILL.md` 主控 + 9 份参考手册 + 三套章节骨架，放进 skills 目录即被自动路由
-- **可单独当命令行工具**：`pf.py` 17 个子命令，全部支持 `--json`，能被 agent 直接消费
-- 解决四类真问题：结构不认模板、图不对版、排版崩（图号/目录/表格跨页）、语言飘（满篇"赋能闭环"）
-- 七种图型都带配色家族与白色描边；透明 PNG 自动压白底；改图上的字不改字号
-- 自带 `pf_selftest.py`，下载后一条命令验证 17 项能力
+> 原名 `proposal-forge`。v2.0 从"申报书工坊"升级为**多赛道竞赛工坊**。
 
-说明：[`proposal-forge/README.md`](./proposal-forge/README.md) ／ 技能主控：[`SKILL.md`](./proposal-forge/SKILL.md)
+- **先定赛道再动手**：大创（国家级大学生创新创业训练计划）/ 大挑（"挑战杯"全国大学生课外学术科技作品竞赛），
+  两者评审口径完全不同，写法反了就是硬伤
+- **一条龙**：文档 → 配图 → PPT → 自检 → 交付
+- **PPT 编排层**：不自己实现 PPT，按赛道决定"讲什么、什么风格、要不要动画"，交给 [ppt-master](https://github.com/hugohe3/ppt-master) 生成
+  （支持元素级进场/强调/路径动画）
+- **AI 生图**：本机 Stable Diffusion 为主（免费无限）+ 云端免费档为辅，含五类"绝不能 AI 生成"的红线
+- **科研绘图**：Nature/Science 配色、多子图 a/b/c、误差棒、矢量输出
+- **依赖自检**：`pf deps` 一条命令扫出缺什么，**每项给 pip/winget 命令和官方下载链接**，换台电脑不用猜
+- **案例研究**：15 份获奖计划书 + 8 份答辩 PPT 的深度分析，提炼出四套章节骨架、12 条写作规律、
+  四套配色方案（量化结论：71% 白底简约、平均饱和度仅 13.8%）
+
+说明：[`competition-forge/README.md`](./competition-forge/README.md) ／ 技能主控：[`SKILL.md`](./competition-forge/SKILL.md)
 
 ## SteamFast 速览
 
@@ -36,9 +43,22 @@
 
 - `source/` 放 SteamFast 的源码与脚本（`compile.py` 编译、`publish.py` 发布）
 - `SteamFast/` 放项目说明、许可证与可直接运行的成品 exe
-- `proposal-forge/` 独立的 AI 技能包（`SKILL.md` + `scripts/` + `references/` + `templates/`），自带 MIT 许可证
+- `competition-forge/` 独立的 AI 技能包（`SKILL.md` + `competitions/` 赛道档案 + `ppt/` PPT 编排 + `figures/` 绘图能力 + `scripts/` + `references/` + `templates/`），自带 MIT 许可证
 
 ## 更新历史
+
+### 2026-10-30
+
+- **proposal-forge 升级为 competition-forge 2.0.0**：从"申报书工坊"改为"多赛道竞赛工坊"
+  - **强制先定赛道**：大创（国家级大学生创新创业训练计划）/ 大挑（"挑战杯"全国大学生课外学术科技作品竞赛），
+    两者评审口径完全不同
+  - **赛道档案**：`competitions/` 下每个赛道有 PROFILE（评审偏好/骨架/失分点）、cases（案例深度分析）、ppt（PPT 策略）
+  - **PPT 编排层**：`ppt/PLAYBOOK.md`，不自己实现 PPT，按赛道决定叙事/风格/动画后交给 ppt-master
+  - **AI 生图**：`figures/AI-IMAGERY.md`，本机 SD 免费为主 + 云端免费档为辅，含五类"绝不能 AI 生成"红线
+  - **科研绘图**：`figures/SCIENCE-PLOT.md`，Nature 配色、多子图、误差棒、矢量输出
+  - **依赖自检**：`pf deps` 扫出缺什么，每项给 pip/winget 命令与官方下载链接
+  - **案例研究**：15 份获奖计划书 OCR + 8 份答辩 PPT 抽帧，提炼四套章节骨架、12 条写作规律、四套配色方案
+  - 量化结论：**71% 白底简约、平均饱和度仅 13.8%**——获奖作品看起来不花哨
 
 ### 2026-10-26
 
@@ -65,4 +85,4 @@
 ## 许可
 
 各项目目录内单独标注，默认 GPLv3。
-`proposal-forge/` 例外，采用 **MIT**（见 [`proposal-forge/LICENSE`](./proposal-forge/LICENSE)），便于被其他项目和工具自由集成。
+`competition-forge/` 例外，采用 **MIT**（见 [`competition-forge/LICENSE`](./competition-forge/LICENSE)），便于被其他项目和工具自由集成。

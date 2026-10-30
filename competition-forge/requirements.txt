@@ -1,0 +1,45 @@
+# ============================================================
+# competition-forge 依赖清单
+# 装之前先跑 `python scripts/pf.py deps` 看本机缺什么（会给出官方下载链接）
+# ============================================================
+
+# ---- 必需：文档与图像处理的基础 ----
+python-docx>=1.0.0
+lxml>=4.9.0
+pillow>=9.0.0
+numpy>=1.22.0
+
+# 图表
+matplotlib>=3.6.0
+
+# PDF：目录页码回填、转换保真比对、关键页渲染检查、扫描件抽帧
+pymupdf>=1.23.0
+
+# ---- 推荐：PPT 能力与科研绘图 ----
+# PPT 生成用 ppt-master（独立项目，见 pf deps），但校验 PPTX 需要 python-pptx
+python-pptx>=0.6.23
+
+# 顶刊风格科研绘图：热力图、统计图
+seaborn>=0.12.0
+
+# 散点拟合、显著性检验
+scipy>=1.10.0
+
+# ---- 可选：Windows 专属 ----
+
+# 旧 .doc / WPS 伪 .docx 转换、导出 PDF、目录页码两遍法、PPT 真开校验
+# pywin32>=305
+# olefile>=0.46
+
+# 读写 Excel 数据源
+# openpyxl>=3.1.0
+# pandas>=2.0.0
+
+# 提取 PDF 表格
+# pdfplumber>=0.10.0
+
+# OCR（从截图取数）——本机改用 Windows 内置 OCR，见 scripts/ocr_page.ps1
+# pytesseract>=0.3.10
+
+# 安全删除（走回收站）
+# send2trash>=1.8.0

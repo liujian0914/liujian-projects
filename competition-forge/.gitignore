@@ -1,0 +1,39 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+Thumbs.db
+
+# 工作产物，不入库
+bak/
+out/
+fig/
+img/
+*.pf_tmp
+~$*
+
+# ---- 案例分析的中间产物，不入库 ----
+# 抽帧图（体积大、可由脚本重建）
+competitions/*/_analysis/frames/
+competitions/*/_analysis/doc_frames/
+# OCR 的全部中间文本与抽帧（含他人作品内容，且可由脚本重建）
+competitions/*/_analysis/ocr/
+# 原始 JSON（体积大）
+competitions/*/_analysis/*_raw.json
+
+# ---- 大文件与第三方，不入库 ----
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+models/
+sd-webui/
+ppt-master/
+
+# 案例原件（他人作品，版权与他人隐私，绝不入库）
+*.pdf
+*.docx
+*.pptx
+*.doc
+!templates/**/*.md
