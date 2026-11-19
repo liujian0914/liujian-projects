@@ -147,3 +147,9 @@
 - `pf convert` / `pf toc` / `pf verify` 依赖 Windows + WPS/Word 的 COM 接口；macOS/Linux 需改用 LibreOffice。
 - `pf toc` 要求标题使用样式；全文手动加粗的标题取不到，需先套样式。
 - `pf retext` 只适用于背景为纯色或平滑渐变的图；照片背景需换图。
+
+## [2.0.1] - 2026-11-16
+
+### 新增
+- `references/11-lessons-2026-tianmai.md`：一次 6 轮返工的教训清单（增量改稿、字数换算、图表配对、文件锁定、交付自检脚本）。
+- `09-pitfalls.md` 增加指向该文件的说明。
