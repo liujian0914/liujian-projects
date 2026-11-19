@@ -1,0 +1,26 @@
+# competition-forge
+
+> 中文竞赛全流程工坊：定赛道 → 写材料 → 配图 → 做 PPT → 自检交付。面向大创（国家级大学生创新创业训练计划）与大挑（"挑战杯"全国大学生课外学术科技作品竞赛）。
+
+## About
+
+一个 agent-agnostic 的技能包（Skill），用于产出中文竞赛材料：申报书、社会调查报告、答辩 PPT。
+核心设计是**强制定赛道**——大创是"项目立项"（要钱、要按期结题），大挑是"成果竞赛"（已有成果去比拼），
+两者评审口径、材料形态、PPT 逻辑完全不同，写法反了就是硬伤。
+
+解决五个真实失败点：结构不认、图不对、排版崩、语言飘、讲不出来。
+每条流程都有可执行命令（`pf` CLI）和验收门禁，不是"一键生成"的许愿池。
+
+## Docs
+
+完整参考：[llms-full.txt](llms-full.txt)
+主控规则：[SKILL.md](SKILL.md)
+用户文档：[README.md](README.md)
+
+## Author
+
+liujian0914 · https://github.com/liujian0914
+
+## License
+
+MIT（本目录）。宿主仓库 liujian-projects 为 GPL-3.0。

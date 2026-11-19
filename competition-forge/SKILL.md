@@ -350,10 +350,12 @@ pf deps --md 环境报告.md    # 写成报告，方便发给队友或换机对�
 | `references/08-toolchain.md` | 科研工具链：每个工具干什么、怎么装、替代方案 |
 | `references/09-pitfalls.md` | 踩坑速查（62 条），动手前扫一眼能省半天 |
 | `references/10-case-dachuang-giep.md` | **实战复盘**：命名方法、评审偏好、体例、图表规范、8 个脚本坑 |
+| `references/11-lessons-2026-tianmai.md` | **返工教训**：一份 25 页调研报告 6 轮退回换来的清单——增量改稿、字数换算、图表配对、文件锁定、交付自检脚本 |
 | `templates/outline-dachuang.md` | 大创申请书骨架 |
 | `templates/outline-guochuang.md` | 国创赛申报书骨架 |
 | `templates/outline-tiaozhanbei.md` | 挑战杯调研报告骨架 |
 | `templates/gbt7714.md` | 文献著录格式卡 |
+| `templates/paper-format/格式卡.md` | **参选论文编排格式**：页面/字号/层次编号/页下注规则（挑战杯论文体，与 GB/T 7714 不同，别混用） |
 | `templates/prompt-figures.md` | 生图提示词模板（IP、海报、界面、架构图） |
 | `templates/prompt-humanize.md` | 去 AI 味改写提示词 |
 
