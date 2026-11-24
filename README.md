@@ -6,6 +6,7 @@
 |---|---|---|---|
 | [SteamFast](./SteamFast) · 蒸汽快线 | Windows 上的 Steam / GitHub 网络加速小工具（hosts 优选 IP + 真实 HTTPS 校验） | 3.0.0 | 2026-10-19 |
 | [competition-forge](./competition-forge) · 竞赛工坊 | 中文竞赛全流程 AI 技能包：多赛道（大创/大挑）、Word 结构手术、答辩 PPT 编排、AI 生图、顶刊科研绘图、去 AI 味检测 | 2.0.0 | 2026-10-30 |
+| [tiku-system](./tiku-system) · 题库系统 | 离线刷题工具：Windows exe + 安卓 APK，多题库、做题记录、题型分组、严格格式校验与 AI 转换提示词 | 1.0.0 | 2026-11-24 |
 
 ## competition-forge 速览
 
@@ -34,6 +35,17 @@
 说明：[`SteamFast/README.md`](./SteamFast/README.md)
 源码：[`source/SteamFast.cs`](./source/SteamFast.cs)
 
+## tiku-system 速览
+
+- 一份 `index.html` 走天下：双击 exe 起本地服务，或直接装 APK，离线可用
+- 做题记录严格校验：format / version / bankId / 题号 / 字段类型任一不对，整份拒收，本机数据一个字不改
+- 总览与目录按题型分组（单选 / 多选 / 不定项 / 判断），快速定位
+- 自带 AI 转换提示词：源文档发给 AI，回复存成 `.qbank.json` 直接导入；带代码围栏也能自动剥掉
+- 内嵌 110+ 项端到端断言与交付审计脚本，改完跑一遍就知道有没有坏
+
+成品：[`tiku-system/题库系统.exe`](./tiku-system/题库系统.exe) ／ [`tiku-system/题库系统.apk`](./tiku-system/题库系统.apk)
+说明：[`tiku-system/使用说明.txt`](./tiku-system/使用说明.txt) ／ 规范：[`tiku-system/spec/题库格式规范与AI提示词.md`](./tiku-system/spec/题库格式规范与AI提示词.md)
+
 ## 给接手的人
 
 要改代码、要发布、要判断某个域名能不能加速，先看 [`AGENTS.md`](./AGENTS.md)。
@@ -43,9 +55,18 @@
 
 - `source/` 放 SteamFast 的源码与脚本（`compile.py` 编译、`publish.py` 发布）
 - `SteamFast/` 放项目说明、许可证与可直接运行的成品 exe
+- `tiku-system/` 离线题库系统（源码 `src/` + 成品 `index.html`/exe/apk + 规范 `spec/` + 测试 `tools/`）
 - `competition-forge/` 独立的 AI 技能包（`SKILL.md` + `competitions/` 赛道档案 + `ppt/` PPT 编排 + `figures/` 绘图能力 + `scripts/` + `references/` + `templates/`），自带 MIT 许可证
 
 ## 更新历史
+
+### 2026-11-24
+
+- 新增 **tiku-system 1.0.0**：离线题库系统，Windows exe + 安卓 APK 双端
+  - 多题库管理，记录按题库隔离；总览与目录按四种题型分组
+  - 记录导入严格模式：bankId 与题号双重校验，全有或全无，写入前归一化
+  - 内置 AI 转换提示词与裸 JSON 输出契约，导入口自动剥代码围栏
+  - 109 项端到端断言 + 交付审计（七档宽度、零 JS 异常、APK 签名与哈希核对）
 
 ### 2026-10-30
 
