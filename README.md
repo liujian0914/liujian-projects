@@ -6,7 +6,7 @@
 |---|---|---|---|
 | [SteamFast](./SteamFast) · 蒸汽快线 | Windows 上的 Steam / GitHub 网络加速小工具（hosts 优选 IP + 真实 HTTPS 校验） | 3.0.0 | 2026-10-19 |
 | [competition-forge](./competition-forge) · 竞赛工坊 | 中文竞赛全流程 AI 技能包：多赛道（大创/大挑）、Word 结构手术、答辩 PPT 编排、AI 生图、顶刊科研绘图、去 AI 味检测 | 2.0.0 | 2026-10-30 |
-| [tiku-system](./tiku-system) · 题库系统 | 离线刷题工具：Windows exe + 安卓 APK，多题库、做题记录、题型分组、严格格式校验与 AI 转换提示词 | 1.0.0 | 2026-11-24 |
+| [tiku-system](./tiku-system) · 题库系统 | 离线刷题工具：Windows exe + 安卓 APK，多题库、做题记录、题型分组、严格格式校验与 AI 转换提示词 | 1.1.0 | 2026-11-24 |
 
 ## competition-forge 速览
 
@@ -59,6 +59,12 @@
 - `competition-forge/` 独立的 AI 技能包（`SKILL.md` + `competitions/` 赛道档案 + `ppt/` PPT 编排 + `figures/` 绘图能力 + `scripts/` + `references/` + `templates/`），自带 MIT 许可证
 
 ## 更新历史
+
+### 2026-11-24（v1.1.0）
+
+- tiku-system：进入答题时清掉上一次作答（选项、对错、答案提示），统计与历史明细保留
+- 修复退回题库列表后重开不恢复上次题目；修复自动翻页定时器在退出或重进后误跳
+- 新增软件版本号，构建号随每次构建自动 +1
 
 ### 2026-11-24
 
