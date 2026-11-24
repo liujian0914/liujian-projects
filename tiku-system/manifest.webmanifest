@@ -1,0 +1,16 @@
+{
+  "name": "题库系统",
+  "short_name": "题库",
+  "description": "通用题库刷题系统：任何按 qbank 格式整理的题库都能导入，记录做题次数、错误率、错选分布与笔记",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f2f4f7",
+  "theme_color": "#1f5fa9",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

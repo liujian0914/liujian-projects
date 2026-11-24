@@ -1,0 +1,15 @@
+# 安卓调试签名密钥（本地构建用，不上传）
+android/debug.keystore
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 本机快捷方式（重装后失效，无意义）
+*.lnk
+
+# 临时文件
+.tmp/
+.check.js
+*.log
+.DS_Store

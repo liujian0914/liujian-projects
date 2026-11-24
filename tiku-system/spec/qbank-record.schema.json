@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "qbank-record 做题记录文件 v1.0",
+  "type": "object",
+  "required": ["format", "version", "records"],
+  "properties": {
+    "format": { "const": "qbank-record" },
+    "version": { "const": "1.0" },
+    "bankId": { "type": "string" },
+    "exportedAt": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "totalQuestions": { "type": "integer" },
+        "attempted": { "type": "integer" },
+        "correct": { "type": "integer" },
+        "wrong": { "type": "integer" },
+        "accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "totalAttempts": { "type": "integer" },
+        "noted": { "type": "integer" },
+        "flagged": { "type": "integer" }
+      }
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "attempts": { "type": "integer", "minimum": 0 },
+          "correct": { "type": "integer", "minimum": 0 },
+          "wrong": { "type": "integer", "minimum": 0 },
+          "accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+          "wrongOptions": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          },
+          "lastPicked": { "type": "array", "items": { "type": "string" } },
+          "lastCorrect": { "type": "boolean" },
+          "history": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "required": ["at", "picked", "correct"],
+              "properties": {
+                "at": { "type": "string" },
+                "picked": { "type": "array", "items": { "type": "string" } },
+                "correct": { "type": "boolean" },
+                "answer": { "type": "string" }
+              }
+            }
+          },
+          "note": { "type": "string" },
+          "flagged": { "type": "boolean" },
+          "starred": { "type": "boolean" },
+          "aiAnalysis": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,171 @@
+<header>
+  <div class="t" id="hdTitle">题库系统</div>
+  <div class="p" id="hdProg"></div>
+  <button class="btn ghost" id="btnSettings" style="display:none;padding:8px 12px;font-size:13px">设置</button>
+  <button class="btn ghost" id="btnHome" style="display:none;padding:8px 12px;font-size:13px">返回</button>
+</header>
+
+<main>
+  <!-- ================= 开头界面：题库管理 ================= -->
+  <div id="vBanks" class="wrap">
+    <div class="hero">
+      <h1>题库系统</h1>
+      <div class="s" id="banksSub">管理你的所有题库</div>
+    </div>
+
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn primary" style="flex:2" id="btnImpBank">导入题库</button>
+      <button class="btn" style="flex:1" id="btnSpecTop">格式规范</button>
+    </div>
+
+    <div class="sec-h">我的题库</div>
+    <div id="bankList"></div>
+
+        <div class="sec-h">格式与提示词</div>
+    <div class="card">
+      <div class="muted">复制提示词，连同源文件一起发给 AI，它就能把 docx / pdf / 图片转成本系统能读的题库文件。回复存成 .qbank.json 直接导入即可，不用删代码围栏。</div>
+      <hr class="sep">
+      <div class="grid2">
+        <button class="btn primary" id="btnCopyPrompt">复制提示词（发给 AI）</button>
+        <button class="btn" id="btnExpSpec">导出规范（.md）</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" style="flex:1" id="btnSpecTop2">查看完整规范</button>
+      </div>
+    </div>
+    </div>
+    <div class="muted" style="text-align:center;margin:16px 0 4px;font-size:12px">记录仅存本机 · 换设备靠导出导入</div>
+  </div>
+
+  <!-- ================= 某个题库的首页 ================= -->
+  <div id="vHome" class="wrap hide">
+    <div class="hero">
+      <h1 id="bankTitle">题库</h1>
+      <div class="s" id="bankSub"></div>
+      <div class="bars">
+        <div class="bar"><b id="stDone">0</b><span>已做 / 总题</span>
+          <div class="track"><div class="fill" id="stFill" style="width:0"></div></div></div>
+        <div class="bar"><b id="stAcc">—</b><span>正确率</span>
+          <div class="track"><div class="fill" id="stFill2" style="width:0"></div></div></div>
+        <div class="bar"><b id="stWrong">0</b><span>错题</span>
+          <div class="track"><div class="fill" id="stFill3" style="width:0"></div></div></div>
+        <div class="bar"><b id="stTries">0</b><span>总作答</span>
+          <div class="track"><div class="fill" id="stFill4" style="width:0"></div></div></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn primary" style="flex:2" id="btnContinue">开始练习</button>
+      <button class="btn" style="flex:1" id="btnRandom">随机 20 题</button>
+    </div>
+
+    <button class="btn block" id="btnOverview" style="margin-bottom:14px">题目总览（按章快速跳题）</button>
+
+    <div class="sec-h">按章节练习</div>
+    <div id="chList"></div>
+
+    <div class="sec-h">专项</div>
+    <div class="card ch" id="goWrong">
+      <div class="nm"><b>错题重练</b><i id="wrongSub">还没有错题</i></div>
+      <div class="ring" id="wrongRing" style="background:var(--bad-soft);color:var(--bad)">0</div>
+    </div>
+    <div class="card ch" id="goHeavy">
+      <div class="nm"><b>顽固错题（错过 2 次以上）</b><i id="heavySub">还没有</i></div>
+      <div class="ring" id="heavyRing" style="background:#fdeee0;color:#b3541e">0</div>
+    </div>
+    <div class="card ch" id="goStar">
+      <div class="nm"><b>我的收藏</b><i id="starSub">还没有收藏</i></div>
+      <div class="ring" id="starRing" style="background:#fff8e1;color:#a86a00">0</div>
+    </div>
+    <div class="card ch" id="goFlag">
+      <div class="nm"><b>标记 / 有疑问</b><i id="flagSub">还没有标记</i></div>
+      <div class="ring" id="flagRing" style="background:#fff4e0;color:var(--warn)">0</div>
+    </div>
+
+    <div class="card" style="padding:2px 15px">
+      <div class="setrow">
+        <div class="sr-t"><b>答对自动下一题</b><span>答对后按设定间隔自动翻页（默认 0.6 秒，可在「设置」里调）；答错不跳</span></div>
+        <label class="sw"><input type="checkbox" id="chkAutoNext"><i></i></label>
+      </div>
+      <div class="setrow">
+        <div class="sr-t"><b>音效</b><span>答对、答错、收藏时的轻提示音</span></div>
+        <label class="sw"><input type="checkbox" id="chkSound"><i></i></label>
+      </div>
+    </div>
+
+    <div class="sec-h">这个题库</div>
+    <div class="card">
+      <div class="kv" id="bankInfo"></div>
+      <hr class="sep">
+      <div class="grid2">
+        <button class="btn ghost" id="btnBankSpec">格式规范</button>
+        <button class="btn ghost" id="btnCheck">题库自检</button>
+      </div>
+    </div>
+
+    <div class="sec-h">做题记录</div>
+    <div class="card">
+      <div class="muted">记录按「题库格式规范 v1.0」保存：每题作答次数、错误率、错选分布、逐次明细、笔记与 AI 分析。</div>
+      <hr class="sep">
+      <div class="grid2">
+        <button class="btn" id="btnExpRec">导出记录（.qrec.json）</button>
+        <button class="btn" id="btnImpRec">导入记录</button>
+        <button class="btn" id="btnExpHtml">导出复习版（可打印）</button>
+        <button class="btn" id="btnExpMd">导出 Markdown</button>
+      </div>
+      <hr class="sep">
+      <div class="grid2">
+        <button class="btn" id="btnExpAi">导出给 AI 的请求包</button>
+        <button class="btn" id="btnImpAi">导入 AI 分析</button>
+      </div>
+      <div class="muted" style="margin-top:8px;font-size:12px">请求包交给任意 AI，它按里面要求的格式返回 JSON，再用「导入 AI 分析」灌回来。</div>
+      <hr class="sep">
+      <button class="btn ghost danger block" id="btnReset">清空这个题库的记录</button>
+      <input type="file" id="fileRec" accept=".json,application/json" class="hide">
+      <input type="file" id="fileAi" accept=".json,application/json" class="hide">
+    </div>
+    <div class="muted" style="text-align:center;margin:16px 0 4px;font-size:12px" id="verLine"></div>
+  </div>
+
+  <!-- ================= 答题 ================= -->
+  <div id="vQuiz" class="wrap hide">
+    <div class="tipbar" id="resumeTip" style="display:none">
+      <span>已回到上次看到的位置</span>
+      <button class="btn ghost" id="resumeTipClose" style="padding:4px 10px;font-size:12px;min-height:0">知道了</button>
+    </div>
+    <div class="qhead" id="qHead"></div>
+    <div class="stem" id="qStem"></div>
+    <div id="qOpts"></div>
+    <div id="qFb"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary" style="flex:1" id="btnSubmit">提交答案</button>
+    </div>
+    <div class="notewrap">
+      <div class="lab"><span>我的笔记 / 疑问</span><em id="noteSaved"></em></div>
+      <textarea class="note" id="qNote" placeholder="记下疑问、易错点、记忆口诀……自动保存，换设备也不丢。"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost" style="flex:1;font-size:13px" id="btnStar">☆ 收藏</button>
+        <button class="btn ghost" style="flex:1;font-size:13px" id="btnFlag">标记为有疑问</button>
+        <button class="btn ghost" style="flex:1;font-size:13px" id="btnRedo">重做本题</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 题目总览 ================= -->
+  <div id="vOverview" class="wrap hide">
+    <div class="muted" style="margin-bottom:12px">点题号直接跳到那道题。数字是题库里的原始题号。</div>
+    <div id="ovBody"></div>
+  </div>
+
+  <!-- ================= 自检 ================= -->
+  <div id="vCheck" class="wrap hide"><div class="card" id="checkBody"></div></div>
+</main>
+
+<div class="navbar" id="navBar" style="display:none">
+  <button class="btn" id="btnPrev">上一题</button>
+  <div class="pos" id="navPos">1 / 1</div>
+  <button class="btn" id="btnNext">下一题</button>
+  <button class="btn" id="btnSheet" style="flex:0 0 auto;padding:11px 12px">目录</button>
+</div>
+
+<input type="file" id="fileBank" accept=".json,application/json" class="hide">

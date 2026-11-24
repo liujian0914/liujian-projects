@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "qbank 题库文件 v1.0",
+  "type": "object",
+  "required": ["format", "version", "meta", "chapters", "questions"],
+  "properties": {
+    "format": { "const": "qbank" },
+    "version": { "const": "1.0" },
+    "meta": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string" },
+        "source": { "type": "string" },
+        "edition": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "questionCount": { "type": "integer", "minimum": 0 },
+        "description": { "type": "string" }
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "order": { "type": "integer" }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "stem", "options", "answer"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["single", "multi", "judge", "indefinite"] },
+          "chapter": { "type": ["string", "null"] },
+          "number": { "type": "integer", "minimum": 0 },
+          "stem": { "type": "string", "minLength": 1 },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "required": ["key", "text"],
+              "properties": {
+                "key": { "type": "string", "pattern": "^[A-H]$" },
+                "text": { "type": "string" }
+              }
+            }
+          },
+          "answer": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-H]$" }
+          },
+          "analysis": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 }
+        }
+      }
+    }
+  }
+}
