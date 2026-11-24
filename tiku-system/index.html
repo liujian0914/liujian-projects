@@ -288,7 +288,7 @@ padding:2px 4px;cursor:pointer;border-radius:6px}
       </div>
     </div>
     </div>
-    <div class="muted" style="text-align:center;margin:16px 0 4px;font-size:12px">记录仅存本机 · 换设备靠导出导入</div>
+    <div class="muted" style="text-align:center;margin:16px 0 4px;font-size:12px" id="topVer"></div>
   </div>
 
   <!-- ================= 某个题库的首页 ================= -->
@@ -12649,6 +12649,7 @@ padding:2px 4px;cursor:pointer;border-radius:6px}
   }
  ]
 }</script>
+<script id="appVer" type="text/plain">v1.1.0（build 5 · 2026-11-24）</script>
 <script id="specDoc" type="text/plain"># 题库格式规范 v1.0（严格版）· 兼 AI 转换提示词
 
 本文同时是**格式规范**和**可直接发给 AI 的提示词**。软件里内嵌的也是这一份，只有这一个来源。
@@ -13038,7 +13039,19 @@ var QS = [], CH = {}, BYID = {};
 var state = { q:{} };    // 指向 recs[curId]
 var cur = { list:[], i:0, mode:"seq", title:"" };
 var noteTimer = null, savedTimer = null, importMode = "merge";
+var quizEpoch = 0;   // 每次进入答题 +1，旧定时器靠比对代次自动失效
 var view = "vBanks";
+
+/* 本次答题会话的作答态：只存内存、不落盘、不导出。
+   每次进入答题（继续练习 / 章节 / 错题重做 / 总览跳题）都清空，
+   所以重新打开题目时上一次选了什么、判了对错都不会残留。
+   做题次数、历史明细、错选分布等仍存在持久化记录里，不受影响。 */
+var sess = {};
+function resetSess(){ sess = {}; quizEpoch++; }
+function sOf(id){
+  if(!sess[id]) sess[id] = { picked:[], answered:false, ok:null };
+  return sess[id];
+}
 
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
@@ -13281,6 +13294,7 @@ function resumeLast(){
   var idx = -1;
   for(var i=0;i<list.length;i++){ if(list[i].id === q.id){ idx = i; break; } }
   if(idx < 0) return false;
+  resetSess();
   cur.list = list; cur.i = idx; cur.mode = "seq"; cur.title = q.chName;
   show("vQuiz"); renderQ();
   var tip = $("#resumeTip");
@@ -13340,6 +13354,7 @@ function jumpToQ(qid){
   var idx = -1;
   for(var i=0;i<list.length;i++){ if(list[i].id === qid){ idx = i; break; } }
   if(idx < 0){ return; }
+  resetSess();
   cur.list = list; cur.i = idx; cur.mode = "seq"; cur.title = q.chName;
   show("vQuiz"); renderQ();
 }
@@ -13442,7 +13457,8 @@ function enterBank(id, opts){
   $("#bankTitle").textContent = (BANK.meta && BANK.meta.title) || "题库";
   var sub = (BANK.meta && (BANK.meta.subject || BANK.meta.edition)) || "";
   $("#bankSub").textContent = QS.length + " 道题 · " + BANK.chapters.length + " 章" + (sub ? " · " + sub : "");
-  $("#verLine").textContent = "题库版本 " + ((BANK.meta && BANK.meta.edition) || "—") + " · 记录仅存本机";
+  var ve0 = $("#appVer"), vs0 = ve0 ? ve0.textContent.trim() : "";
+  $("#verLine").textContent = vs0 + " · 题库版本 " + ((BANK.meta && BANK.meta.edition) || "—") + " · 记录仅存本机";
 
   var info = $("#bankInfo");
   info.innerHTML =
@@ -13699,6 +13715,8 @@ function show(v){
     back.style.display = "none";
     if(gear) gear.style.display = "none";
     $("#hdTitle").textContent = "题库系统"; $("#hdProg").textContent = "";
+    var tv = $("#topVer"), ve = $("#appVer");
+    if(tv) tv.textContent = (ve ? ve.textContent.trim() : "") + " · 记录仅存本机 · 换设备靠导出导入";
   } else {
     back.style.display = "inline-flex";
     if(gear) gear.style.display = "inline-flex";
@@ -13715,13 +13733,14 @@ function goBack(){
     refreshHomeStats();
   } else {
     curId = "";
-    lsSet(K_CUR, "");
+    // 不清 K_CUR：保留"上次在哪个题库"，下次打开软件还能回到那一题
     show("vBanks");
   }
 }
 
 function startQuiz(list, mode, title){
   if(!list.length){ alert("这一组没有题目。"); return; }
+  resetSess();
   cur.list = list; cur.i = 0; cur.mode = mode; cur.title = title || "练习";
   show("vQuiz"); renderQ();
 }
@@ -13730,9 +13749,10 @@ function renderQ(){
   var q = cur.list[cur.i];
   if(!q) return;
   var r = getRec(q.id) || blankRec();
-  var locked = (r.lastCorrect === 1 || r.lastCorrect === 0);
-  var picked = r.lastPicked || [];
-  var tagCls = r.lastCorrect===1 ? "ok" : (r.lastCorrect===0 ? "bad" : "");
+  var sv = sOf(q.id);
+  var locked = sv.answered;
+  var picked = sv.picked || [];
+  var tagCls = sv.answered ? (sv.ok ? "ok" : "bad") : "";
   var tags = (q.tags||[]).map(function(t){
     return '<span class="tag" style="background:#eceff3;color:var(--sub)">' + esc(t) + '</span>';
   }).join("");
@@ -13774,7 +13794,7 @@ function renderQ(){
   var fb = $("#qFb");
   fb.innerHTML = "";
   if(locked){
-    if(r.lastCorrect===1){
+    if(sv.ok){
       fb.innerHTML = '<div class="fb ok"><b>答对了</b>' + (q.analysis ? '<span class="an">解析：' + esc(q.analysis) + '</span>' : '') + '</div>';
     } else {
       fb.innerHTML = '<div class="fb bad"><b>答错了</b> · 正确答案 <b>' + q.answer.join("") + '</b>' +
@@ -13833,23 +13853,25 @@ function renderQ(){
 
 function pickOpt(k){
   var q = cur.list[cur.i];
-  var r = getRec(q.id) || blankRec();
-  if(r.lastCorrect === 1 || r.lastCorrect === 0) return;
-  var p = (r.lastPicked||[]).slice();
+  var sv = sOf(q.id);
+  if(sv.answered) return;
+  var p = sv.picked.slice();
   if(isMulti(q)){
     var at = p.indexOf(k);
     if(at>=0) p.splice(at,1); else p.push(k);
-    setRec(q.id, { lastPicked:p });
+    sv.picked = p;
     renderQ();
   } else {
-    setRec(q.id, { lastPicked:[k] });
+    sv.picked = [k];
     grade(q);
   }
 }
 
 function grade(q){
   var r = getRec(q.id) || blankRec();
-  var p = r.lastPicked || [];
+  var sv = sOf(q.id);
+  if(sv.answered) return;
+  var p = sv.picked || [];
   if(!p.length) return;
   var ok = isCorrect(q, p);
   var h = (r.h||[]).slice(-49);
@@ -13861,19 +13883,22 @@ function grade(q){
     attempts: (r.attempts||0)+1,
     correct: (r.correct||0) + (ok?1:0),
     wrong: (r.wrong||0) + (ok?0:1),
+    lastPicked: p.slice().sort(),
     lastCorrect: ok?1:0, h: h, wo: wo
   });
+  sv.answered = true;
+  sv.ok = ok ? 1 : 0;
   renderQ();
 
   if(ok) sndCorrect(); else sndWrong();
 
   if(ok && SET.autoNext && cur.i < cur.list.length - 1){
-    var from = cur.i, qid = q.id;
+    var from = cur.i, qid = q.id, epoch = quizEpoch, svRef = sv;
     setTimeout(function(){
-      if(view !== "vQuiz") return;
+      if(view !== "vQuiz" || epoch !== quizEpoch) return;   // 已退出或重进，作废
       if(cur.i !== from) return;                     // 用户已经自己跳了
-      var rr = getRec(qid);
-      if(!rr || rr.lastCorrect !== 1) return;        // 已经重做就别跳了
+      if(!svRef.answered || !svRef.ok) return;       // 本次会话已重做，别跳
+      if(sess[qid] !== svRef) return;                // 该题会话态已换，别跳
       go(1);
     }, SET.delay);
   }
@@ -14615,8 +14640,8 @@ function bind(){
   $("#btnSheet").addEventListener("click", openSheet);
   $("#btnSubmit").addEventListener("click", function(){ flushNote(); grade(cur.list[cur.i]); });
   $("#btnRedo").addEventListener("click", function(){
-    var q = cur.list[cur.i];
-    setRec(q.id, { lastPicked:[], lastCorrect:null });
+    var sv = sOf(cur.list[cur.i].id);
+    sv.picked = []; sv.answered = false; sv.ok = null;
     renderQ();
   });
   $("#btnFlag").addEventListener("click", function(){

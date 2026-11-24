@@ -533,6 +533,80 @@ async function main() {
   }
   await sleep(200);
 
+  // ---------- 会话作答态：进入答题时清掉上一次作答 ----------
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);
+  await ev("document.querySelector('.bank[data-id=\"test-bank\"]').click()"); await sleep(450);
+
+  // 先做 ch1-single-1（答错），留下记录
+  await ev("document.querySelector('#chList [data-ch=\"ch1\"]').click()"); await sleep(350);
+  await ev("document.querySelectorAll('#qOpts .opt')[0].click()"); await sleep(250);
+  const recAfterAnswer = await ev("JSON.parse(localStorage.getItem('qbank.records.v2'))['test-bank']['ch1-single-1']");
+  ok("作答后记录写入次数", recAfterAnswer.attempts >= 1, JSON.stringify(recAfterAnswer).slice(0, 100));
+  ok("作答后界面锁定显示反馈", (await ev("!!document.querySelector('#qFb .fb')")) === true);
+
+  // 回到题库首页，再点章节重新进入 ——上一次的作答痕迹应消失
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);
+  await ev("document.querySelector('#chList [data-ch=\"ch1\"]').click()"); await sleep(350);
+  ok("重进后不再显示上次对错反馈", (await ev("!!document.querySelector('#qFb .fb')")) === false,
+     await ev("document.querySelector('#qFb').innerText.slice(0,60)"));
+  ok("重进后选项不再锁定", (await ev("document.querySelectorAll('#qOpts .opt.locked').length")) === 0,
+     await ev("document.querySelectorAll('#qOpts .opt.locked').length"));
+  ok("重进后选项不显示正确答案", (await ev("document.querySelectorAll('#qOpts .opt.correct').length")) === 0);
+  ok("重进后没有选中项", (await ev("document.querySelectorAll('#qOpts .opt.sel').length")) === 0);
+  ok("重进后仍显示历史统计", (await ev("document.querySelector('#qFb .hist')!==null")) === true);
+  const recAfterReenter = await ev("JSON.parse(localStorage.getItem('qbank.records.v2'))['test-bank']['ch1-single-1']");
+  ok("重进后做题记录没被清掉", recAfterReenter.attempts === recAfterAnswer.attempts &&
+     recAfterReenter.h.length === recAfterAnswer.h.length,
+     recAfterAnswer.attempts + "/" + recAfterAnswer.h.length + " -> " +
+     recAfterReenter.attempts + "/" + recAfterReenter.h.length);
+
+  // 本次会话答对，反馈出现；切到下一题再切回来，本次作答应保留（同一次练习内）
+  await ev("document.querySelectorAll('#qOpts .opt')[1].click()"); await sleep(250);
+  ok("本次作答后显示答对", (await ev("document.querySelector('#qFb .fb.ok')!==null")) === true);
+  await ev("document.querySelector('#btnNext').click()"); await sleep(200);
+  await ev("document.querySelector('#btnPrev').click()"); await sleep(200);
+  ok("同一次练习内切题回来保留本次作答", (await ev("!!document.querySelector('#qFb .fb')")) === true);
+
+  // 退出题库再进、走错题重做入口，也应清零
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);
+  await ev("document.querySelector('#btnHome').click()"); await sleep(350);
+  await ev("document.querySelector('.bank[data-id=\"test-bank\"]').click()"); await sleep(450);
+  const recBeforeWrong = await ev("JSON.parse(localStorage.getItem('qbank.records.v2'))['test-bank']['ch1-single-1'].attempts");
+  await ev("document.querySelector('#goWrong').click()"); await sleep(400);
+  ok("错题重做入口进入后作答清零", (await ev("!!document.querySelector('#qFb .fb')")) === false,
+     await ev("document.querySelector('#qFb').innerText.slice(0,60)"));
+  ok("错题重做里选项未锁定", (await ev("document.querySelectorAll('#qOpts .opt.locked').length")) === 0);
+  const recWrong = await ev("JSON.parse(localStorage.getItem('qbank.records.v2'))['test-bank']['ch1-single-1']");
+  ok("错题重做不清历史记录", recWrong.attempts === recBeforeWrong, recBeforeWrong + " -> " + recWrong.attempts);
+
+  // 版本号显示
+  ok("版本号已注入页面", (await ev("document.querySelector('#appVer').textContent")).indexOf("v1.1.0") >= 0,
+     await ev("document.querySelector('#appVer').textContent"));
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);
+  ok("首页底部显示版本号", (await ev("document.querySelector('#topVer').textContent")).indexOf("v1.1.0") >= 0,
+     await ev("document.querySelector('#topVer').textContent"));
+  await ev("document.querySelector('#btnHome').click()"); await sleep(400);
+
+  // ---------- 退回题库列表后关掉重开，仍回到上次那题 ----------
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);
+  await ev("document.querySelector('.bank[data-id=\"test-bank\"]').click()"); await sleep(450);
+  await ev("document.querySelector('#chList [data-ch=\"ch2\"]').click()"); await sleep(350);
+  await ev("document.querySelector('#btnNext').click()"); await sleep(250);
+  const resumeQ = await ev("JSON.parse(localStorage.getItem('qbank.pos.v2'))['test-bank'].qid");
+  const resumeText = await ev("document.querySelector('#qStem').textContent");
+  ok("答题时记录了位置", !!resumeQ, String(resumeQ));
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);   // 回题库首页
+  await ev("document.querySelector('#btnHome').click()"); await sleep(350);   // 回题库列表
+  ok("退回列表后仍保留当前题库标记", (await ev("localStorage.getItem('qbank.cur.v2')")) === "test-bank",
+     await ev("localStorage.getItem('qbank.cur.v2')"));
+  await send("Page.navigate", { url: URL }); await sleep(1600);               // 关掉重开
+  ok("重开后直接回到答题页", (await ev("document.querySelector('#vQuiz').classList.contains('hide')")) === false);
+  ok("重开后回到上次那道题", (await ev("document.querySelector('#qStem').textContent")) === resumeText,
+     (await ev("document.querySelector('#qStem').textContent")).slice(0,40) + " | 应为 " + resumeText.slice(0,40));
+  ok("重开后该题作答是干净的", (await ev("!!document.querySelector('#qFb .fb')")) === false);
+  await ev("document.querySelector('#btnHome').click()"); await sleep(300);
+  await ev("document.querySelector('#btnHome').click()"); await sleep(400);
+
   // ---------- 自检 ----------
   await ev("document.querySelector('.bank[data-id=\"test-bank\"]').click()"); await sleep(450);
   await ev("document.querySelector('#btnCheck').click()"); await sleep(400);

@@ -1,9 +1,19 @@
 # -*- coding: utf-8 -*-
 """把 CSS + 页面骨架 + 内嵌题库 + 内嵌规范 + 逻辑脚本 组装成 index.html。"""
-import os, re, json, sys
+import os, re, json, sys, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+
+# 版本真源：version.json。每次构建修订号自动 +1，日期写当天，不用手改。
+vpath = os.path.join(ROOT, "version.json")
+ver = json.load(open(vpath, encoding="utf-8"))
+ver["build"] = int(ver.get("build", 0)) + 1
+ver["updated"] = datetime.date.today().isoformat()
+with open(vpath, "w", encoding="utf-8") as f:
+    json.dump(ver, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+ver_txt = "v%s（build %d · %s）" % (ver.get("version", "1.0.0"), ver["build"], ver["updated"])
 
 css = open(os.path.join(HERE, "app.css"), encoding="utf-8").read()
 page = open(os.path.join(HERE, "page.html"), encoding="utf-8").read()
@@ -45,13 +55,14 @@ html = """<!DOCTYPE html>
 <body>
 %s
 <script id="bank" type="application/json">%s</script>
+<script id="appVer" type="text/plain">%s</script>
 <script id="specDoc" type="text/plain">%s</script>
 <script>
 %s
 </script>
 </body>
 </html>
-""" % (css, extra_css, page, bank, spec, app)
+""" % (css, extra_css, page, bank, ver_txt, spec, app)
 
 out = os.path.join(ROOT, "index.html")
 open(out, "w", encoding="utf-8").write(html)
